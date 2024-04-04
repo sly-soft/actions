@@ -6,6 +6,7 @@ $org = $env:OUTSIDE_COLLABORATORS_GITHUB_ORG
 function LoadCollaborators($repo) {
     Write-Host "Loading collaborators from file '$repo'"
     
+    $content = Get-Content $file.Name
     $collaborators = New-Object Collections.Generic.List[string]
     foreach ($collaborator in $content) {
         $collaborators.Add($collaborator)
