@@ -4,7 +4,7 @@ Write-Host "**update-outside-collaborators**"
 Set-Location external-collaborators
 
 foreach ($file in Get-ChildItem) {
-    $content = Get-Contentet $file
+    $content = Get-Content $file
     foreach ($line in $content) {
         Write-Host $content
     }
