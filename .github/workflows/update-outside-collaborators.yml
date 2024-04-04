@@ -23,12 +23,15 @@ jobs:
 
     steps:
       - name: Set Env Variables
+        shell: pwsh
         run: |
-          echo "OUTSIDE_COLLABORATORS_GITHUB_ORG=${{ github.repository_owner }}" >> ${GITHUB_ENV}
-          echo "OUTSIDE_COLLABORATORS_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> ${GITHUB_ENV}
-      - uses: actions/checkout@main
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          echo "OUTSIDE_COLLABORATORS_GITHUB_ORG=${{ github.repository_owner }}" >> $env:GITHUB_ENV
+          echo "OUTSIDE_COLLABORATORS_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $env:GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Run Handler
+        shell: pwsh
         run: .github/scripts/update-outside-collaborators.ps1
       
