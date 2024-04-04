@@ -1,9 +1,49 @@
 Write-Host "**update-outside-collaborators**"
 
-$org = $env:OUTSIDE_COLLABORATORS_GITHUB_ORG
-#$token = $env:GITHUB_TOKEN
+$org = $env:GITHUB_ORG
+if ($Null -eq $org) {
+    "Environment variable 'GITHUB_ORG' not provided"
+    exit 1
+}
 
-function LoadCollaborators($repo) {
+$token = $env:GITHUB_TOKEN
+if ($Null -eq $token) {
+    "Environment variable 'GITHUB_TOKEN' not provided"
+    exit 1
+}
+
+# Setup Headers
+$GitHubHeaders = @{
+    'Accept'               = 'application/vnd.github+json'
+    'Authorization'        = "Bearer $token"
+    'X-GitHub-Api-Version' = '2022-11-28'
+}
+
+function RetrieveCurrentCollaborators($repo) {
+    $url = = "https://api.github.com/repos/$org/$repo/collaborators"
+    #$url = = "https://api.github.com/repos/$org/$repo/collaborators/affiliation=outside"
+
+    Write-Debug "-- Invoke-RestMethod --"
+    Write-Debug "url: $url"
+
+    $collaborators = New-Object Collections.Generic.List[string]
+
+    $response = Invoke-RestMethod       `
+        -Headers $GitHubHeaders  `
+        -URI $url `
+        -StatusCodeVariable statusCode `
+        -SkipHttpErrorCheck
+
+    if ($statusCode -ne 200) {
+        Write-Error "Error retrieving current collaborators: $statusCode"
+        return $collaborators
+    }
+
+    Write-Host "response: $response"
+    return $collaborators
+}
+
+function LoadDesiredCollaborators($repo) {
     Write-Host "Loading collaborators from file '$repo'"
     
     $content = Get-Content $file.Name
@@ -11,15 +51,19 @@ function LoadCollaborators($repo) {
     foreach ($collaborator in $content) {
         $collaborators.Add($collaborator)
     }
+
     return $collaborators
 }
 
-function HandleRepo($repo) {
+function UpdateRepo($repo) {
     Write-Host "Handling Repo '$org/$repo'"
 
-    $collaborators = LoadCollaborators $repo
+    $existingCollaborators = RetrieveCurrentCollaborators($repo)
+    Write-Host $existingCollaborators
 
-    Write-Host $collaborators
+    $desiredCollaborators = LoadDesiredCollaborators $repo
+
+    Write-Host $desiredCollaborators
 }
 
 
@@ -28,5 +72,5 @@ function HandleRepo($repo) {
 Set-Location ./external-collaborators
 
 foreach ($file in Get-ChildItem) {
-    HandleRepo $file.name
+    UpdateRepo $file.name
 }
