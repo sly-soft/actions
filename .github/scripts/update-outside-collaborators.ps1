@@ -19,6 +19,8 @@ $GitHubHeaders = @{
     'X-GitHub-Api-Version' = '2022-11-28'
 }
 
+Write-Host $GitHubHeaders
+
 function RetrieveCurrentCollaborators($repo) {
     $url = "https://api.github.com/repos/$org/$repo/collaborators"
     #$url = "https://api.github.com/repos/$org/$repo/collaborators/affiliation=outside"
@@ -28,7 +30,7 @@ function RetrieveCurrentCollaborators($repo) {
 
     $collaborators = New-Object Collections.Generic.List[string]
 
-    $response = Invoke-RestMethod       `
+    $response = Invoke-RestMethod `
         -Headers $GitHubHeaders  `
         -URI $url `
         -StatusCodeVariable statusCode `
