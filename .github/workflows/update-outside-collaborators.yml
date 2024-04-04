@@ -20,7 +20,7 @@ jobs:
     name: "Update Outside Collaborators"
     runs-on: ubuntu-latest
     permissions:
-        metadata:read
+        metadata: read
     environment: outside_collaborators_environment
 
     steps:
