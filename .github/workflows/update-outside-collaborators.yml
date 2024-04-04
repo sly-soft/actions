@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Check:
-    name: "Check"
+  Update-Outside-Collaborators:
+    name: "Update Outside Collaborators"
     runs-on: ubuntu-latest
     environment: outside_collaborators_environment
 
@@ -30,7 +30,5 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Run Handler
-        run: |
-          cd scripts
-          ./update-outside-collaborators.ps1
+        run: github/scripts/update-outside-collaborators.ps1
       
