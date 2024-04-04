@@ -3,4 +3,4 @@ Write-Host "**update-outside-collaborators**"
 
 Set-Location external-collaborators
 
-Write-Host dir
+Get-ChildItem
