@@ -1,11 +1,13 @@
-# Write-Host "Org: $env:OUTSIDE_COLLABORATORS_GITHUB_ORG"
 Write-Host "**update-outside-collaborators**"
 
-Set-Location external-collaborators
+$org = $env:OUTSIDE_COLLABORATORS_GITHUB_ORG
+
+Set-Location ./external-collaborators
 
 foreach ($file in Get-ChildItem) {
-    $content = Get-Content $file
+    Write-Host "Repo: $org/$($file.name)"
+    $content = Get-Content $file.Name
     foreach ($line in $content) {
-        Write-Host $content
+        Write-Host "  External Collaborator:" $content
     }
 }
