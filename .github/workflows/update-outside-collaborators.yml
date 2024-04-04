@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Handler
+      - name: Update Outside Collaborators
         shell: pwsh
         run: .github/scripts/update-outside-collaborators.ps1
       
