@@ -19,8 +19,6 @@ jobs:
   Update-Outside-Collaborators:
     name: "Update Outside Collaborators"
     runs-on: ubuntu-latest
-    permissions:
-      metadata: read
     environment: outside_collaborators_environment
 
     steps:
@@ -28,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           echo "GITHUB_ORG=${{ github.repository_owner }}" >> $env:GITHUB_ENV
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $env:GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.ORG_TOKEN }}" >> $env:GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v4

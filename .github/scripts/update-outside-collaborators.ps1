@@ -1,6 +1,8 @@
 Write-Host "**update-outside-collaborators**"
 
+
 $org = $env:GITHUB_ORG
+#$org = 'sly-soft'
 if ($Null -eq $org) {
     "Environment variable 'GITHUB_ORG' not provided"
     exit 1
