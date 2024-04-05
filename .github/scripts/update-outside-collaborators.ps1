@@ -24,7 +24,8 @@ $GitHubHeaders = @{
 Write-Host $GitHubHeaders
 
 function RetrieveCurrentCollaborators($repo) {
-    $url = "https://api.github.com/repos/$org/$repo/collaborators"
+    $url = "https://api.github.com/repos/sly-soft/testrepo/collaborators"
+    #$url = "https://api.github.com/repos/$org/$repo/collaborators"
     #$url = "https://api.github.com/repos/$org/$repo/collaborators/affiliation=outside"
 
     Write-Debug "-- Invoke-RestMethod --"
