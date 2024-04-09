@@ -1,6 +1,5 @@
 Write-Host "**update-outside-collaborators**"
 
-
 $org = $env:GITHUB_ORG
 if ($Null -eq $org) {
     "Environment variable 'GITHUB_ORG' not provided"
@@ -13,6 +12,12 @@ if ($Null -eq $token) {
     exit 1
 }
 
+$jcKey = $env:JUMP_CLOUD_KEY
+if ($Null -eq $jcKey) {
+    "Environment variable 'JUMP_CLOUD_KEY' not provided"
+    exit 1
+}
+
 # Setup Headers
 $GitHubHeaders = @{
     'Accept'               = 'application/vnd.github+json'
@@ -20,7 +25,11 @@ $GitHubHeaders = @{
     'X-GitHub-Api-Version' = '2022-11-28'
 }
 
-Write-Host $GitHubHeaders
+
+$JumpCloudHeaders = @{
+    'x-api-key' = $jcKey
+}
+
 
 function RetrieveCurrentCollaborators($repo) {
     Write-Host "Retrieving existing collaborators for '$repo'"
@@ -73,17 +82,6 @@ function RetrieveInvitations($repo) {
     return $invitations
 }
 
-function LoadDesiredCollaborators($repo) {
-    Write-Host "Loading collaborators from file '$repo'"
-    
-    $content = Get-Content $file.Name
-    $collaborators = New-Object Collections.Generic.List[string]
-    foreach ($collaborator in $content) {
-        $collaborators.Add($collaborator)
-    }
-
-    return $collaborators
-}
 
 function IdentifyMissingCollabortors($existingCollaborators, $invitations, $desiredCollaborators) {
     $collaboratorsAndInvitiations = New-Object Collections.Generic.List[string]
@@ -196,35 +194,138 @@ function RescendInvitation($repo, $invitation) {
     }
 }
 
-function UpdateRepo($repo) {
+function UpdateRepo($repo, $configuredCollaborators) {
     Write-Host "Handling Repo '$org/$repo'"
 
     [array]$existingCollaborators = RetrieveCurrentCollaborators $repo
     [array]$invitations = RetrieveInvitations $repo
 
-    [array]$desiredCollaborators = LoadDesiredCollaborators $repo
-
-    [array]$collaboratorsToAdd = IdentifyMissingCollabortors $existingCollaborators $invitations $desiredCollaborators
+    [array]$collaboratorsToAdd = IdentifyMissingCollabortors $existingCollaborators $invitations $configuredCollaborators
     foreach ($collaborator in $collaboratorsToAdd) {
         AddCollaboratorToRepo $repo $collaborator
     }
 
-    [array]$collaboratorsToRemove = IdentifyCollaboratorsToRemove $existingCollaborators $desiredCollaborators
+    [array]$collaboratorsToRemove = IdentifyCollaboratorsToRemove $existingCollaborators $configuredCollaborators
     foreach ($collaborator in $collaboratorsToRemove) {
         RemoveCollaboratorFromRepo $repo $collaborator 
     }
 
-    [array]$invitationsToRescend = IdentifyInvitiationsToRescend $invitations $desiredCollaborators
+    [array]$invitationsToRescend = IdentifyInvitiationsToRescend $invitations $configuredCollaborators
     foreach ($invitation in $invitationsToRescend) {
         RescendInvitation $repo $invitation
     }
 }
 
+function GetGitHubUsernameForJumpCloudUser($jcUserId) {
+    $url = "https://console.jumpcloud.com/api/systemusers/$jcUserId"
+
+    Write-Debug "-- Invoke-RestMethod --"
+    Write-Debug "url: $url"
+
+    $userData = Invoke-RestMethod `
+        -Headers $JumpCloudHeaders  `
+        -URI $url `
+        -StatusCodeVariable statusCode `
+        -SkipHttpErrorCheck
+
+    if ($statusCode -ne 200) {
+        Write-Error "Error retrieving member data for '$jcUserId' from JumpCloud: $statusCode"
+        return $null
+    }
+
+    foreach ($attribute in $userData.Attributes) {
+        if ($attribute.name -eq "GitHubUsername") {
+            return $attribute.Value
+        }        
+    }
+
+    return $null
+}
+
+function GetGroupMembersFromJumpCloud($group) {
+    Write-Host "Getting members of $group"
+
+    $groupMembers = New-Object Collections.Generic.List[string]
+
+    $url = "https://console.jumpcloud.com/api/v2/usergroups?filter=name:eq:$group"
+
+    Write-Debug "-- Invoke-RestMethod --"
+    Write-Debug "url: $url"
+
+    $groupData = Invoke-RestMethod `
+        -Headers $JumpCloudHeaders  `
+        -URI $url `
+        -StatusCodeVariable statusCode `
+        -SkipHttpErrorCheck
+
+    if ($statusCode -ne 200) {
+        Write-Error "Error retrieving group '$group' from JumpCloud: $statusCode"
+        return $groupMembers
+    }
+    
+    $groupId = $groupData.id
+
+    $url = "https://console.jumpcloud.com/api/v2/usergroups/$groupId/members"
+
+    Write-Debug "-- Invoke-RestMethod --"
+    Write-Debug "url: $url"
+
+    $members = Invoke-RestMethod `
+        -Headers $JumpCloudHeaders  `
+        -URI $url `
+        -StatusCodeVariable statusCode `
+        -SkipHttpErrorCheck
+
+    if ($statusCode -ne 200) {
+        Write-Error "Error retrieving members for group '$group' from JumpCloud: $statusCode"
+        return $groupMembers
+    }
+
+    foreach ($member in $members) {
+        $gitHubUserName = GetGitHubUsernameForJumpCloudUser $member.to.id
+        if ($null -eq $gitHubUserName) {
+            continue
+        }
+
+        $groupMembers.Add($gitHubUserName)
+    }
+
+    return $groupMembers;
+}
+
+function GetConfiguredCollaborators($repoConfiguration) {
+    if ($null -eq $repoConfiguration.individuals) {
+        $configuredCollaborators = New-Object Collections.Generic.List[string]
+    } else {
+        $configuredCollaborators = $repoConfiguration.individuals
+    }
+    
+    foreach ($group in $repoConfiguration.groups) {
+        $groupMembers = GetGroupMembersFromJumpCloud $group
+        foreach ($groupMember in $groupMembers) {
+            if ($configuredCollaborators -contains $groupMember) {
+                continue
+            }
+
+            $configuredCollaborators.Add($groupMember)
+        }
+    }
+
+    return $configuredCollaborators
+}
+
 
 #main logic
 
+#clear
 Set-Location ./external-collaborators
 
-foreach ($file in Get-ChildItem) {
-    UpdateRepo $file.name
+$yaml = Get-Content -Path "team-config.yml" | Out-String
+
+Import-Module powershell-yaml
+
+$repos = ConvertFrom-Yaml $yaml 
+foreach ($repo in $repos.Keys) {
+    [array]$configuredCollaborators = GetConfiguredCollaborators $repos[$repo]
+    UpdateRepo $repo $configuredCollaborators
 }
