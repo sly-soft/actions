@@ -1,0 +1,6 @@
+testrepo:
+  groups: 
+    - test_contractors_tools
+  individuals:
+    - octocat
+
