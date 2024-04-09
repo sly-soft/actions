@@ -34,7 +34,7 @@ jobs:
 
       - name: Install Powershell-Yaml
         shell: pwsh
-        run: Install-Module powershell-yaml
+        run: Install-Module powershell-yaml -Confirm:$False -Force
 
       - name: Update Outside Collaborators
         shell: pwsh
