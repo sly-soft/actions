@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "GITHUB_ORG=${{ github.repository_owner }}" >> $env:GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.ORG_TOKEN }}" >> $env:GITHUB_ENV
-          echo "GITHUB_TOKEN=${{ secrets.JUMP_CLOUD_KEY }}" >> $env:JUMP_CLOUD_KEY
+          echo "JUMP_CLOUD_KEY=${{ secrets.JUMP_CLOUD_KEY }}" >> $env:JUMP_CLOUD_KEY
 
       - name: Checkout
         uses: actions/checkout@v4
